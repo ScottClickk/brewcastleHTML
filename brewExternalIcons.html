@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Animate a point along a route</title>
+<meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.css" rel="stylesheet">
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.js"></script>
+<style>
+body { margin: 0; padding: 0; }
+#map { position: absolute; top: 0; bottom: 0; width: 100%; }
+</style>
+</head>
+<body>
+<style>
+    .overlay {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+    }
+
+    .overlay button {
+        font:
+            600 12px/20px 'Helvetica Neue',
+            Arial,
+            Helvetica,
+            sans-serif;
+        background-color: #3386c0;
+        color: #fff;
+        display: inline-block;
+        margin: 0;
+        padding: 10px 20px;
+        border: none;
+        cursor: pointer;
+        border-radius: 3px;
+    }
+
+    .overlay button:hover {
+        background-color: #4ea0da;
+    }
+
+    .overlay button:disabled {
+        background: #f5f5f5;
+        color: #c3c3c3;
+    }
+</style>
+<!-- <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script> -->
+
+<div id="map-mobile"></div>
+<!-- <div class="overlay">
+    <button id="replay">Replay</button>
+</div> -->
+
+<script>
+mapboxgl.accessToken = 'pk.eyJ1Ijoiam9zaHVhY2xpY2trIiwiYSI6ImNsdHMzMjF5azBvNHEybHFtaTFrNjVjMDgifQ.GoNQaqHD-i6oGS3zJ5bbHw';
+
+var bounds = [
+    [151.57267678415096, -32.954658143269306],
+    [151.8504009188231, -32.81909047987636]
+];
+
+var center_value = [151.767071, -32.928618];
+
+const mapMobile = new mapboxgl.Map({
+    container: 'map-mobile',
+    style: 'mapbox://styles/joshuaclickk/cm1ik4kgj000q01rbdjav0jr7?optimize=true',
+    center: center_value,
+    maxBounds: bounds,
+    zoom: 13.9,
+    scrollZoom: false, // Disable scroll zoom for now
+    maxZoom: 14.5,
+    bearing: -10.5,
+    pitch: 56.5,
+    maxPitch: 56.5,
+    minPitch: 56.5,
+});
+
+mapMobile.touchZoomRotate.disable();
+
+mapMobile.on('load', function () {
+    const iconUrls = [
+        'https://brewcastlebrewtrail.com.au/wp-content/uploads/2024/09/thirstyMessiahBrewery.webp',
+        'https://brewcastlebrewtrail.com.au/wp-content/uploads/2024/09/rogueScholar.webp',
+		'https://brewcastlebrewtrail.com.au/wp-content/uploads/2024/09/theGrainStore.webp',
+        'https://brewcastlebrewtrail.com.au/wp-content/uploads/2024/09/shoutBrewing.webp',
+        'https://brewcastlebrewtrail.com.au/wp-content/uploads/2024/09/modus.webp',
+        'https://brewcastlebrewtrail.com.au/wp-content/uploads/2024/09/methodBrewing.webp',
+        'https://brewcastlebrewtrail.com.au/wp-content/uploads/2024/09/maltnhops.webp',
+        'https://brewcastlebrewtrail.com.au/wp-content/uploads/2024/09/grainfed.webp',
+        'https://brewcastlebrewtrail.com.au/wp-content/uploads/2024/09/goodFolk.webp',
+        'https://brewcastlebrewtrail.com.au/wp-content/uploads/2024/09/foghorn.webp',
+        'https://brewcastlebrewtrail.com.au/wp-content/uploads/2024/09/earpDistilling.webp',
+        'https://brewcastlebrewtrail.com.au/wp-content/uploads/2024/09/clarendonHotel.webp',
+		'https://brewcastlebrewtrail.com.au/wp-content/uploads/2024/09/theEdwards-scaled.webp'
+    ];
+
+    const loadIcons = (callback) => {
+        let loadedCount = 0;
+        iconUrls.forEach((url, index) => {
+            mapMobile.loadImage(url, (error, image) => {
+                if (error) console.error(Error `loading image ${url}:`, error);
+                else mapMobile.addImage(`icon${index + 1}`, image);
+                loadedCount++;
+                if (loadedCount === iconUrls.length) callback();
+            });
+        });
+    };
+
+    loadIcons(() => {
+        mapMobile.addSource('markers', {
+            'type': 'geojson',
+            'data': {
+                'type': 'FeatureCollection',
+                'features': [
+                    {
+                        'type': 'Feature',
+                        'geometry': {
+                            'type': 'Point',
+                            'coordinates': [151.72542713543712, -32.92266131858089]
+                        },
+                        'properties': {
+                            'title': 'The Thirsty Messiah',
+                            'icon': 'icon1',
+							'website': 'thirstymessiah.com.au',
+							//'description': 'Thirsty Messiah features 40 taps of award-winning beer, seltzers, sours, and cocktails, complemented by a menu from one of Newcastle’s top chefs. Enjoy live music, games, and comfortable seating!',
+                        }
+                    },
+                    {
+                        'type': 'Feature',
+                        'geometry': {
+                            'type': 'Point',
+                            'coordinates': [151.76725919663576, -32.927681409741425]
+                        },
+                        'properties': {
+                            'title': 'The Rogue Scholar',
+                            'icon': 'icon2',
+							'website': 'theroguescholar.com.au',
+							//'description': 'Since 2020, Rogue Scholar has been a unique brewpub and live music venue. With 12 rotating taps and 4 handpumps, enjoy unconventional brews and live music Thursday to Sunday.',
+                        }
+                    },
+                    {
+						'type': 'Feature',
+						'geometry': {
+							'type': 'Point',
+							'coordinates': [151.78715977708248, -32.92744165852486 ] 
+						},
+						'properties': {
+							'title': 'The Grain Store',
+							'icon': 'icon3',
+							'website': 'www.grainstore.beer',
+							//'description': 'The Grain Store is a restored 1885 warehouse in Newcastle’s Historic East End. With 21 taps of Australian craft beer and a diverse menu, it’s a perfect spot.',
+						}
+					},
+                    {
+						'type': 'Feature',
+						'geometry': {
+							'type': 'Point',
+							'coordinates': [151.74165510110413, -32.91048896420812,  ] 
+						},
+						'properties': {
+							'title': 'Shout Brewing',
+							'icon': 'icon4',
+							'website': 'shoutbrewing.com.au',
+							//'description': 'Shout Brewing, a small-batch craft brewery in Islington, offers a cozy venue for 50 patrons. Founded in 2018, they pride themselves on crafting fresh, innovative beers with heart and soul.',
+						}
+					},
+                    {
+						'type': 'Feature',
+						'geometry': {
+							'type': 'Point',
+							'coordinates': [151.7565184205751, -32.94108850637, ] 
+						},
+						'properties': {
+							'title': 'Modus',
+							'icon': 'icon5',
+							'website': 'mobrewing.com.au',
+							//'description': 'Modus offers 36 taps of brewery-fresh beer, alongside a seasonal food menu. Family-friendly with a kids play area, they also offer cocktails, wines, and spirits. Dogs and sandy feet welcome!',
+						}
+					},
+                    {
+						'type': 'Feature',
+						'geometry': {
+							'type': 'Point',
+							'coordinates': [151.75101695550404, -32.9192798748065, ] 
+						},
+						'properties': {
+							'title': 'Method Brewing',
+							'icon': 'icon6',
+							'website': 'methodbrewing.com.au',
+							//'description': 'Method, born from a former home-brew shop, focuses on quality, method-driven beer for the Newcastle community. Each brew is crafted with care, ensuring you enjoy the best taste experience. ',
+						}
+					},
+                    {
+						'type': 'Feature',
+						'geometry': {
+							'type': 'Point',
+							'coordinates': [151.63479918433703, -32.806339608884784, ] 
+						},
+						'properties': {
+							'title': 'Maltnhops Brewhaus',
+							'icon': 'icon7',
+							'website': 'maltnhops.com.au',
+							//'description': 'Maltnhops, near the Hunter Valley, offers 11 taps of on-site brewed craft beer for all tastes. Enjoy freshly made 10" pizzas, including gluten-free options, available from 12pm in their taproom.',
+						}
+					},
+                    {
+						'type': 'Feature',
+						'geometry': {
+							'type': 'Point',
+							'coordinates': [151.7198600708467 , -32.91531183550227, ] 
+						},
+						'properties': {
+							'title': 'Grainfed Brewing Company',
+							'icon': 'icon8',
+							'website': 'grainfedbrewing.com.au',
+							//'description': '',
+						}
+					},
+                    {
+						'type': 'Feature',
+						'geometry': {
+							'type': 'Point',
+							'coordinates': [151.74724835920395 , -32.92137026630159, ] 
+						},
+						'properties': {
+							'title': 'Good Folk Brewing',
+							'icon': 'icon9',
+							'website': 'goodfolkbrewing.com.au',
+							//'description': 'Good Folk Brewing is a family-owned Newcastle brewery that delivers quality beer without the fuss. Built on a love of craft beer and friendships, it’s the perfect laid-back spot.',
+						}
+					},
+                    {
+						'type': 'Feature',
+						'geometry': {
+							'type': 'Point',
+							'coordinates': [151.77545771872508 , -32.927175076933494,  ] 
+						},
+						'properties': {
+							'title': 'Foghorn Brewery',
+							'icon': 'icon10',
+							'website': 'foghornbrewery.com.au',
+							//'description': `Foghorn Brewery, founded in 2014, offers award-winning craft beer brewed on-site and great food in a 250-seat restaurant. Perfect for groups and functions, it's open Tuesday-Sunday in Newcastle’s heart.`,
+						}
+					},
+                    {
+						'type': 'Feature',
+						'geometry': {
+							'type': 'Point',
+							'coordinates': [151.76866819131058, -32.909458769276874,   ] 
+						},
+						'properties': {
+							'title': 'Earp Distilling Co.',
+							'icon': 'icon11',
+							'website': 'earpdistillingco.com',
+							//'description': 'Earp Distilling Co. in Carrington blends tradition and innovation, producing small-batch gin, vodka, rum, and whisky. Enjoy tours, tastings, and workshops, plus a bar with seasonal menus and craft cocktails.',
+						}
+					},
+                    {
+						'type': 'Feature',
+						'geometry': {
+							'type': 'Point',
+							'coordinates': [151.77326118433982, -32.92683183854747,   ] 
+						},
+						'properties': {
+							'title': 'Clarendon Hotel',
+							'icon': 'icon12',
+							'website': 'clarendonhotel.com.au',
+							//'description': 'The Clarendon Hotel offers boutique rooms, modern dining, and an art deco bar in Newcastle CBD. Enjoy nightly entertainment, from steak night to trivia, with pub classics and jug deals.',
+						}
+					},
+					{
+						'type': 'Feature',
+						'geometry': {
+							'type': 'Point',
+							'coordinates': [ 151.76005425126058, -32.92741833614614, ] 
+						},
+						'properties': {
+							'title': 'The Edwards',
+							'icon': 'icon13',
+							'website': 'theedwards.com.au',
+							//'description': 'The Edwards offers food, drinks, music, and culture in a rustic venue. Enjoy meals, Happy Hour, and events like Eddie’s Feast, Steak Night, and Super Chill Fridays.',
+						}
+					}
+                ]
+            }
+        });
+
+        mapMobile.addLayer({
+            'id': 'breweries',
+            'type': 'symbol',
+            'source': 'markers',
+            'layout': {
+                'icon-image': ['get', 'icon'],
+                'icon-size': [
+                    'interpolate', ['exponential', 1.4], ['zoom'],
+                    0, 0.01,
+                    22, 0.5
+                ],
+                'text-offset': [0, 0.6],
+                'text-anchor': 'top',
+                'icon-allow-overlap': true,
+                'text-allow-overlap': true
+            }
+        });
+    });
+
+	//Center the map.
+        mapMobile.on('click', 'breweries', function (e) {
+            mapMobile.flyTo({
+                center: e.features[0].geometry.coordinates,
+                zoom: 13.9,
+                duration: 1300,
+            });
+        });
+
+        // When a click event occurs on a feature in the places layer, open a popup at the
+        // location of the feature, with description HTML from its properties.
+        mapMobile.on('click', 'breweries', function (e) {
+            var coordinates = e.features[0].geometry.coordinates.slice();
+                var brewery_title = e.features[0].properties.title;
+                var brewery_website = e.features[0].properties.website;
+
+
+
+		let htmlContent = '';
+		
+		// Title 
+		htmlContent = `<h3>${brewery_title}</h3>`
+
+		// Website
+		htmlContent += `<a href="https://${brewery_website}" target="_blank">${brewery_website}</a><br>`
+
+		// Description
+		//htmlContent += `<p>${brewery_description}</p>`
+
+		// Get directions
+		htmlContent += `<a href="https://maps.google.com/?q=${brewery_title}" target="_blank">Get directions</a>`
+
+        new mapboxgl.Popup()
+        	.setLngLat(coordinates)
+			.setHTML(`<div class="mobile-popup">${htmlContent}</div>`)
+        	.addTo(mapMobile);
+        });
+
+});
+</script>
+
+</body>
+</html>

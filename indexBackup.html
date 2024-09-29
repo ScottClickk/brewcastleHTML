@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Animate a point along a route</title>
+<meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.css" rel="stylesheet">
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.js"></script>
+<style>
+body { margin: 0; padding: 0; }
+#map { position: absolute; top: 0; bottom: 0; width: 100%; }
+</style>
+</head>
+<body>
+<style>
+    .overlay {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+    }
+
+    .overlay button {
+        font:
+            600 12px/20px 'Helvetica Neue',
+            Arial,
+            Helvetica,
+            sans-serif;
+        background-color: #3386c0;
+        color: #fff;
+        display: inline-block;
+        margin: 0;
+        padding: 10px 20px;
+        border: none;
+        cursor: pointer;
+        border-radius: 3px;
+    }
+
+    .overlay button:hover {
+        background-color: #4ea0da;
+    }
+
+    .overlay button:disabled {
+        background: #f5f5f5;
+        color: #c3c3c3;
+    }
+</style>
+<script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+
+<div id="map"></div>
+<!-- <div class="overlay">
+    <button id="replay">Replay</button>
+</div> -->
+
+<script>
+mapboxgl.accessToken = 'pk.eyJ1Ijoiam9zaHVhY2xpY2trIiwiYSI6ImNsdHMzMjF5azBvNHEybHFtaTFrNjVjMDgifQ.GoNQaqHD-i6oGS3zJ5bbHw';
+
+// Set bounds
+var bounds = [
+    [151.57267678415096, -32.954658143269306], // [west, south] [151.75647890282644, -32.94511041929251] 
+    [151.8504009188231, -32.81909047987636]  // [151.7963257737236, -32.915450702457434] [east, north] -32.79602837044845, 151.99076111887354
+];
+
+
+var center_value = [
+    151.767071, -32.928618
+];
+
+const map = new mapboxgl.Map({
+	container: 'map', // container ID
+	style: 'mapbox://styles/joshuaclickk/cly41cale00ag01oe04de40nf', // style URL 
+	center: center_value, // starting position [lng, lat]
+    maxBounds: bounds,
+    zoom: 13.9, 
+    maxZoom: 18.2, 
+    bearing: -10.5,
+    pitch: 56.5, 
+    maxPitch: 56.5,
+    minPitch: 56.5,
+});
+
+/*
+Add an event listener that runs
+  when a user clicks on the map element.
+*/
+
+let animationIds = [];
+
+map.on('click', (event) => {
+  console.log(map.queryRenderedFeatures(event.point));
+  // If the user clicked on one of your markers, get its information.
+  const features = map.queryRenderedFeatures(event.point, {
+    layers: ['beer-trail-breweries-scott', 'beer-trail-breweries-large'] // replace with your layer name
+  });
+  if (!features.length) {
+    return;
+  }
+  const feature = features[0];
+ console.log(feature)
+	if(feature.properties && feature.properties.description){
+		let htmlContent = ''
+		
+		// Title 
+		htmlContent = `<h3>${feature.properties.title}</h3>`
+		
+		// Image (check image upload date in file path)
+		if(feature.properties.icon === 'grainfed' || feature.properties.icon === 'modus') {		
+			htmlContent += `<img src='https://beertrail.clickkdev.com.au/wp-content/uploads/2024/08/${feature.properties.icon}.webp'/>`
+		} else {
+				htmlContent += `<img src='https://beertrail.clickkdev.com.au/wp-content/uploads/2024/07/${feature.properties.icon}.webp'/>`
+		}
+		
+		// Website
+		htmlContent += `<a href="https://${feature.properties.website}" target="_blank">${feature.properties.website}</a><br>`
+			
+		// Phone
+		if (feature.properties && feature.properties.phone) {
+			htmlContent += `<a href="tel:${feature.properties.phone}" >${feature.properties.phone}</a><br>`
+		}
+		
+		// Email / Contact
+		if(feature.properties && feature.properties.contact) {
+			htmlContent += `<a href="https://${feature.properties.website}/${feature.properties.contact}" target="_blank">Contact Us Here</a><br>`
+		} else {
+			htmlContent += `<a href="mailto:${feature.properties.email_user}@${feature.properties.email_domain}" >${feature.properties.email_user}@${feature.properties.email_domain}</a><br>`
+		}
+		
+		// Description
+		htmlContent += `<p>${feature.properties.description}</p>`
+		
+		// Get directions
+		htmlContent += `<a href="https://maps.google.com/?q=${feature.properties.title}" target="_blank">Get directions</a>`
+	
+		const mapContainer = map.getContainer();
+        const mapContainerRect = mapContainer.getBoundingClientRect();
+        
+        // Convert screen coordinates to map coordinates
+        const topLeftScreenCoord = [mapContainerRect.left, mapContainerRect.top];
+        const topLeftMapCoord = map.unproject(topLeftScreenCoord);
+		const parsedTopLeftMapCoords = [topLeftMapCoord.lng,topLeftMapCoord.lat];
+		console.log(topLeftMapCoord)
+		console.log(parsedTopLeftMapCoords)
+		
+  		const popup = new mapboxgl.Popup({ offset: [-60, -155]})
+  			.setLngLat(parsedTopLeftMapCoords)
+         	.setHTML(htmlContent)
+          	.addTo(map)
+  }
+});
+
+// const animatedElements = [
+//     {
+//         name: 'busRight',
+//         origin: [151.688224, 32.940615],
+//         destination: [151.769256, 32.934111], 
+//         route: [
+//             [151.688224, -32.940615],
+//             [151.689529, -32.937547],
+//             [151.689133, -32.934959],
+//             [151.692936, -32.929495],
+//             [151.695643, -32.927128],
+//             [151.696234, -32.925584],
+//             [151.698583, -32.923319],
+//             [151.701092, -32.922487],
+//             [151.702073, -32.921252],
+//             [151.704669, -32.922124],
+//             [151.710900, -32.922777],
+//             [151.712862, -32.922027],
+//             [151.731610, -32.924208],
+//             [151.733110, -32.923638],
+//             [151.736076, -32.924721],
+//             [151.737608, -32.924127],
+//             [151.740705, -32.924217],
+//             [151.742872, -32.923428],
+//             [151.751395, -32.924738],
+//             [151.752815, -32.924444],
+//             [151.754419, -32.930516],
+//             [151.761776, -32.935231],
+//             [151.765185, -32.931484],
+//             [151.769256, -32.934111]
+//         ],
+//         icon: 'busRight',
+//         steps: 200,
+//         initialOrientation: 270,
+//         animationSpeed: 100
+//     }, 
+//     {
+//         name: 'busLeft',
+//         origin: [151.769256, 32.934111],
+//         destination: [151.688224, 32.940615], 
+//         route: [
+//             [151.769256, -32.934111],
+//             [151.765040, -32.938822],
+//             [151.753817, -32.938563],
+//             [151.734268, -32.935805],
+//             [151.733280, -32.935372],
+//             [151.720847, -32.933502],
+//             [151.717373, -32.930868],
+//             [151.715921, -32.929003],
+//             [151.712705, -32.934393],
+//             [151.705901, -32.935106],
+//             [151.704683, -32.934923],
+//             [151.703550, -32.935200], 
+//             [151.699072, -32.937947],
+//             [151.694152, -32.940102],
+//             [151.691748, -32.940003],
+//             [151.689368, -32.940230],
+//             [151.688224, -32.940615]
+//         ],
+//         icon: 'busLeft',
+//         steps: 200,
+//         initialOrientation: 90 ,
+//         animationSpeed: 100
+//     },
+//     {
+//         name: 'hanglider',
+//         origin: [151.74655895993388, -32.9533748217138], 
+//         destination: [151.74655895993388, -32.9533748217138],
+//         route: [
+//             [151.74655895993388, -32.9533748217138],
+// 			[151.74413064643616, -32.957484818765614],
+//             [151.7414532751438, -32.954106275847884], 
+//             [151.73649287388585, -32.963510146922545], 
+//             [151.73450041141413, -32.954977046739835],
+// 			[151.74630990184318, -32.948097723299085],
+// 			[151.74655895993388, -32.9533748217138]
+//         ],
+//         icon: 'hangGlider',
+//         steps: 100,
+//         initialOrientation: 90,
+//         animationSpeed: 100
+//     },
+// 	{
+//         name: 'shipLeft',
+//         origin: [152.09546152085068, -32.93126913917772], 
+//         destination: [151.75071833055222, -32.88069579639048],
+//         route: [
+//             [152.09546152085068, -32.93126913917772],
+// 			[151.81691146804454, -32.907382504731814],
+//             [151.78349990565863, -32.92311118995877], 
+//             [151.77716530201477, -32.92085132101261], 
+//             [151.7706723320303, -32.89312999883965],
+// 			[151.75071833055222, -32.88069579639048],
+//         ],
+//         icon: 'shipLeft',
+//         steps: 600,
+//         initialOrientation: 90,
+//         animationSpeed: 100
+//     },
+// 	{
+//         name: 'shipRight',
+//         origin: [151.75071833055222, -32.88069579639048], 
+//         destination: [152.09546152085068, -32.93126913917772],
+//         route: [
+//             [151.75071833055222, -32.88069579639048],
+// 			[151.7706723320303, -32.89312999883965],
+//             [151.77716530201477, -32.92085132101261], 
+//             [151.78349990565863, -32.92311118995877], 
+//             [151.81691146804454, -32.907382504731814],
+// 			[152.09546152085068, -32.93126913917772],
+//         ],
+//         icon: 'shipRight',
+//         steps: 600,
+//         initialOrientation: 270,
+//         animationSpeed: 100
+//     },
+// 	{
+//         name: 'tramRight',
+//         origin: [151.76031798074095, -32.92452386055166], 
+//         destination: [151.78651566753385, -32.927581285518045],
+//         route: [
+//             [151.76031798074095, -32.92452386055166],
+// 			[151.76358491123293, -32.92589270854041],
+//             [151.76673382459532, -32.92664016265589], 
+//             [151.7676457756289, -32.92675723320905], 
+//             [151.76845580280272, -32.92733357829361],
+// 			[151.77692212619652, -32.926432786412825],
+// 			[151.77838661235637, -32.926239168933456],
+// 			[151.7819754080081, -32.92638775913035],
+// 			[151.78651566753385, -32.927581285518045]
+//         ],
+//         icon: 'tram',
+//         steps: 70,
+//         initialOrientation: 270,
+//         animationSpeed: 100
+//     },
+// 	{
+//         name: 'tramLeft',
+//         origin: [151.78651566753385, -32.927581285518045], 
+//         destination: [151.76031798074095, -32.92452386055166],
+//         route: [
+//             [151.78651566753385, -32.927581285518045],
+// 			[151.7819754080081, -32.92638775913035],
+//             [151.77838661235637, -32.926239168933456], 
+//             [151.77692212619652, -32.926432786412825], 
+//             [151.76845580280272, -32.92733357829361],
+// 			[151.7676457756289, -32.92675723320905],
+// 			[151.76673382459532, -32.92664016265589],
+// 			[151.76358491123293, -32.92589270854041],
+// 			[151.76031798074095, -32.92452386055166]
+//         ],
+//         icon: 'tram',
+//         steps: 70,
+//         initialOrientation: 90,
+//         animationSpeed: 100
+//     },
+// 	{
+//         name: 'trainRight',
+//         origin: [151.60415728930062, -32.753585233745326], 
+//         destination: [151.7591092017861, -32.924193938604596],
+//         route: [
+//             [151.60415728930062, -32.753585233745326],
+// 			[151.67949615004417, -32.818338771103704],
+//             [151.70866579403574, -32.8856147196894], 
+//             [151.71409667768432, -32.89119402371821], 
+//             [151.72357183578984, -32.89531763122176],
+// 			[151.750674000058, -32.920144423263736],
+// 			[151.7591092017861, -32.924193938604596]
+//         ],
+//         icon: 'trainRight',
+//         steps: 400,
+//         initialOrientation: 270,
+//         animationSpeed: 100
+//     },
+// 	{
+//         name: 'trainLeft',
+//         origin: [151.7591092017861, -32.924193938604596], 
+//         destination: [151.60415728930062, -32.753585233745326],
+//         route: [
+//             [151.7591092017861, -32.924193938604596],
+// 			[151.750674000058, -32.920144423263736],
+//             [151.72357183578984, -32.89531763122176], 
+//             [151.71409667768432, -32.89119402371821], 
+//             [151.70866579403574, -32.8856147196894],
+// 			[151.67949615004417, -32.818338771103704],
+// 			[151.60415728930062, -32.753585233745326]
+//         ],
+//         icon: 'trainLeft',
+//         steps: 400,
+//         initialOrientation: 90,
+//         animationSpeed: 100
+//     },
+// ];
+
+
+// // Create routes
+// const routes = []
+// for (i = 0; i < animatedElements.length; i++) {
+//     let tempRoute = {
+//         'type': 'FeatureCollection',
+//         'features': [
+//             {
+//                 'name': animatedElements[i].name,
+//                 'type': 'Feature',
+//                 'geometry': {
+//                     'type': 'LineString',
+//                     'coordinates': animatedElements[i].route
+//                 }
+//             }
+//         ]
+//     }
+//     routes.push(tempRoute)
+// }
+
+
+// // A single point that animates along the route.
+// // Coordinates are initially set to origin.
+// const points = []
+// for (i = 0; i < animatedElements.length; i++) {
+//     let tempPoint = {
+//         'type': 'FeatureCollection',
+//         'features': [
+//             {
+//                 'type': 'Feature',
+//                 'properties': {},
+//                 'geometry': {
+//                     'type': 'Point',
+//                     'coordinates': animatedElements[i].origin
+//                 }
+//             }
+//         ]
+//     }
+//     points.push(tempPoint)
+// }
+
+// const steps = 1500;
+// let arc = [];
+
+// map.on('load', () => {
+//     for (i = 0; i < routes.length; i++) {
+    
+//         // Calculate the distance in kilometers between route start/end point.
+//         const lineDistance = turf.length(routes[i].features[0]);
+//         console.log(lineDistance);
+//         arc = [];
+        
+//         // Number of steps to use in the arc and animation, more steps means
+//         // a smoother arc and animation, but too many steps will result in a
+//         // low frame rate
+        
+        
+//         // Draw an arc between the `origin` & `destination` of the two points
+//         for (let j = 0; j < lineDistance; j += lineDistance / animatedElements[i].steps) {
+//             const segment = turf.along(routes[i].features[0], j);
+//             arc.push(segment.geometry.coordinates);
+//         }
+        
+//         // Update the route with calculated arc coordinates
+//         routes[i].features[0].geometry.coordinates = arc;
+        
+        
+//         // Add a sources and layers displaying multiple point which will each be animated in a circle.
+//         map.addSource(`route${+i}`, {
+//             'type': 'geojson',
+//             'data': routes[i]
+//         });
+
+//         map.addSource(`point${+i}`, {
+//             'type': 'geojson',
+//             'data': points[i]
+//         });
+
+//         map.addLayer({
+//             'id': `route${+i}`,
+//             'source': `route${+i}`,
+//             'type': 'line',
+//             'paint': {
+//                 'line-width': 0,
+//                 'line-color': '#007cbf'
+//             }
+//         });
+
+//         map.addLayer({
+//             'id': `point${+i}`,
+//             'source': `point${+i}`,
+//             'type': 'symbol',
+//             'layout': {
+//                 'icon-image': animatedElements[i].icon,
+//                 'icon-size': 0.2,
+//                 'icon-rotate': ['get', `bearing`],
+//                 'icon-rotation-alignment': 'map',
+//                 'icon-allow-overlap': true,
+//                 'icon-ignore-placement': true
+//             }
+//         });
+
+
+//     }   
+
+//     startAnimations();
+// });
+
+// map.on('remove', stopAnimations);
+
+// function startAnimations() {
+//     animatedElements.forEach((element, index) => {
+//         animateElement(element, index);
+//     });
+// }
+
+// function animateElement(element, index) {
+//     const route = routes[index].features[0].geometry.coordinates;
+//     let step = 0;
+
+//     function animate() {
+//         if (step >= route.length - 1) {
+//             step = 0;
+//         }
+
+//         const start = route[step];
+//         const end = route[step + 1];
+
+//         if (!start || !end) {
+//             console.error('Invalid coordinates for element:', element.name);
+//             return;
+//         }
+
+//         const bearing = turf.bearing(turf.point(start), turf.point(end));
+//         const orientation = element.initialOrientation;
+
+//         map.getSource(`point${index}`).setData({
+//             type: 'FeatureCollection',
+//             features: [{
+//                 type: 'Feature',
+//                 geometry: {
+//                     type: 'Point',
+//                     coordinates: start
+//                 },
+//                 properties: {
+//                     bearing: bearing + orientation
+//                 }
+//             }]
+//         });
+
+//         step++;
+
+//         // Schedule the next frame
+//         animationIds[index] = setTimeout(() => {
+//             requestAnimationFrame(animate);
+//         }, element.animationSpeed || 100); // Use a default speed if not specified
+//     }
+
+//     // Start the animation
+//     animate();
+// }
+
+// function stopAnimations() {
+//     animationIds.forEach(id => clearTimeout(id));
+//     animationIds = [];
+// }
+
+
+</script>
+
+</body>
+</html>
